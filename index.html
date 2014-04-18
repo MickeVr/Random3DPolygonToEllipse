@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>From Random 3D Polygon to Ellipse</title>
+        <script src="scripts/gl-matrix.js"></script>
+        <script src="scripts/phoria-util.js"></script>
+        <script src="scripts/phoria-entity.js"></script>
+        <script src="scripts/phoria-scene.js"></script>
+        <script src="scripts/phoria-renderer.js"></script>
+        <script src='scripts/dat.gui.min.js'></script>
+        <script>
+            var requestAnimFrame = window.requestAnimationFrame || window.webkitRequestAnimationFrame ||
+                    window.mozRequestAnimationFrame || window.msRequestAnimationFrame ||
+                    function(c) {
+                        window.setTimeout(c, 15)
+                    };
+
+            //add global variables
+            var randomPoints = [];
+            var numberPoints = 100;
+
+            function fillStartPoints(intNumberPoints)
+            {
+                var localPoints = [];
+                for (var i = 0; i < intNumberPoints; i++) {
+                    localPoints.push({x: Math.random(), y: Math.random(), z: Math.random()});
+                }
+                return rescale(localPoints);
+            }
+
+            function updatePoints(randomPoints)
+            {
+                var localPoints = [];
+                for (var i = 0; i < randomPoints.length - 1; i++) {
+                    var xnew;
+                    var ynew;
+                    var znew;
+                    xnew = (randomPoints[i]["x"] + randomPoints[i + 1]["x"]) / 2;
+                    ynew = (randomPoints[i]["y"] + randomPoints[i + 1]["y"]) / 2;
+                    znew = (randomPoints[i]["z"] + randomPoints[i + 1]["z"]) / 2;
+                    localPoints.push({x: xnew, y: ynew, z: znew});
+                }
+                var xnew;
+                var ynew;
+                var znew;
+                xnew = (randomPoints[randomPoints.length - 1]["x"] + randomPoints[0]["x"]) / 2;
+                ynew = (randomPoints[randomPoints.length - 1]["y"] + randomPoints[0]["y"]) / 2;
+                znew = (randomPoints[randomPoints.length - 1]["z"] + randomPoints[0]["z"]) / 2;
+                localPoints.push({x: xnew, y: ynew, z: znew});
+
+                return rescale(localPoints);
+            }
+
+            function rescale(randomPoints)
+            {
+                var localPoints = [];
+                var xmin = randomPoints[0]["x"];
+                var xmax = randomPoints[0]["x"];
+                var ymin = randomPoints[0]["y"];
+                var ymax = randomPoints[0]["y"];
+                var zmin = randomPoints[0]["z"];
+                var zmax = randomPoints[0]["z"];
+
+                for (var i = 0; i < randomPoints.length; i++) {
+                    if (xmin > randomPoints[i]["x"])
+                    {
+                        xmin = randomPoints[i]["x"];
+                    }
+                    if (xmax < randomPoints[i]["x"])
+                    {
+                        xmax = randomPoints[i]["x"];
+                    }
+                    if (ymin > randomPoints[i]["y"])
+                    {
+                        ymin = randomPoints[i]["y"];
+                    }
+                    if (ymax < randomPoints[i]["y"])
+                    {
+                        ymax = randomPoints[i]["y"];
+                    }
+                    if (zmin > randomPoints[i]["z"])
+                    {
+                        zmin = randomPoints[i]["z"];
+                    }
+                    if (zmax < randomPoints[i]["z"])
+                    {
+                        zmax = randomPoints[i]["z"];
+                    }
+                }
+
+                for (var i = 0; i < randomPoints.length; i++) {
+                    var xnew;
+                    var ynew;
+                    var znew;
+                    xnew = (randomPoints[i]["x"] - xmin) / (xmax - xmin);
+                    ynew = (randomPoints[i]["y"] - ymin) / (ymax - ymin);
+                    znew = (randomPoints[i]["z"] - zmin) / (zmax - zmin);
+                    localPoints.push({x: xnew, y: ynew, z: znew});
+                }
+                return localPoints;
+            }
+
+
+            /**
+             Phoria
+             pho·ri·a (fôr-)
+             n. The relative directions of the eyes during binocular fixation on a given object
+             */
+
+            // bind to window onload event
+            window.addEventListener('load', onloadHandler, false);
+            function onloadHandler()
+            {
+                // get the canvas DOM element and the 2D drawing context
+                var canvas = document.getElementById('canvas');
+                // create the scene and setup camera, perspective and viewport
+                var scene = new Phoria.Scene();
+                scene.camera.position = {x: 3.0, y: 3.0, z: -4.0};
+                scene.perspective.aspect = canvas.width / canvas.height;
+                scene.viewport.width = canvas.width;
+                scene.viewport.height = canvas.height;
+                // create a canvas renderer
+                var renderer = new Phoria.CanvasRenderer(canvas);
+
+                var localRandomPoints = fillStartPoints(numberPoints);
+                var resultingEdges = [];
+
+                for (var i = 0; i < numberPoints - 1; i++) {
+                    resultingEdges.push({a: i, b: (i + 1)});
+                }
+                resultingEdges.push({a: (numberPoints - 1), b: 0});
+
+                var blueEdges = Phoria.Entity.create({
+                    points: localRandomPoints,
+                    edges: resultingEdges,
+                    style: {
+                        color: [0, 0, 255],
+                        drawmode: "wireframe",
+                        shademode: "plain",
+                        linewidth: 1,
+                        linescale: 2
+                    }
+                });
+                scene.graph.push(blueEdges);
+                var redPoints = Phoria.Entity.create({
+                    points: localRandomPoints,
+                    style: {
+                        color: [255, 0, 0],
+                        drawmode: "point",
+                        shademode: "plain",
+                        linewidth: 1,
+                        linescale: 1
+                    }
+                });
+                scene.graph.push(redPoints);
+
+
+                var c = Phoria.Util.generateUnitCube(0.5);
+                var cube = Phoria.Entity.create({
+                    points: c.points,
+                    edges: c.edges,
+                    //polygons: c.polygons,
+                    style: {
+                        color: [0, 200, 0],
+                        drawmode: "wireframe",
+                        shademode: "plain",
+                        linewidth: 1,
+                        linescale: 1
+                    }
+                });
+                cube.translateY(0.5);
+                cube.translateZ(0.5);
+                cube.translateX(0.5);
+                scene.graph.push(cube);
+                var pause = false;
+                var singleStep = true;
+                var fnAnimate = function() {
+                    if (!pause)
+                    {
+                        localRandomPoints = updatePoints(localRandomPoints);
+                        blueEdges["points"] = localRandomPoints;
+                        redPoints["points"] = localRandomPoints;
+
+                        // execute the model view 3D pipeline and render the scene
+                        scene.modelView();
+                        renderer.render(scene);
+                    }
+                    if (singleStep)
+                    {
+                        pause=true;
+                    }
+                    requestAnimFrame(fnAnimate);
+                };
+                // key binding
+                document.addEventListener('keydown', function(e) {
+                    switch (e.keyCode)
+                    {
+                        case 27: // ESC
+                            pause = !pause;
+                            break;
+                    }
+                }, false);
+                //pause button
+                var button_pause = document.getElementById("btn_pause");
+                button_pause.addEventListener("click", function() {
+                    pause = !pause;
+                    if (pause){
+                        button_pause.setAttribute("value","Play");
+                    }else
+                    {
+                        button_pause.setAttribute("value","Pause");
+                        singleStep = false;
+                    }
+
+                });
+                var button_step = document.getElementById("btn_step");
+                button_step.addEventListener("click", function() {
+                    singleStep=true;
+                    pause=false;
+
+                });
+                var button_rand = document.getElementById("btn_rand");
+                button_rand.addEventListener("click", function() {
+                    localRandomPoints = fillStartPoints(numberPoints);
+                    singleStep=true;
+                    pause=false;
+
+                });
+                // add GUI controls
+                var gui = new dat.GUI();
+                var f = gui.addFolder('Perspective');
+                f.add(scene.perspective, "fov").min(5).max(175);
+                f.add(scene.perspective, "near").min(1).max(100);
+                f.add(scene.perspective, "far").min(1).max(100);
+                //f.open();
+                f = gui.addFolder('Camera LookAt');
+                f.add(scene.camera.lookat, "x").min(-100).max(100);
+                f.add(scene.camera.lookat, "y").min(-100).max(100);
+                f.add(scene.camera.lookat, "z").min(-100).max(100);
+                f.open();
+                f = gui.addFolder('Camera Position');
+                f.add(scene.camera.position, "x").min(-100).max(100);
+                f.add(scene.camera.position, "y").min(-100).max(100);
+                f.add(scene.camera.position, "z").min(-100).max(100);
+                f.open();
+                f = gui.addFolder('Camera Up');
+                f.add(scene.camera.up, "x").min(-10).max(10).step(0.1);
+                f.add(scene.camera.up, "y").min(-10).max(10).step(0.1);
+                f.add(scene.camera.up, "z").min(-10).max(10).step(0.1);
+                f.open();
+                // start animation
+                requestAnimFrame(fnAnimate);
+            }
+        </script>
+    </head>
+
+    <body style="background-color: white">
+        <canvas id="canvas" width="400" height="400" style="background-color: #eee"></canvas>
+        <form><input type="button" id="btn_pause" value="Play"/>
+        <input type="button" id="btn_step" value="Step"/>
+        <input type="button" id="btn_rand" value="Randomize"/>
+        </form>
+    </body>
+</html>
